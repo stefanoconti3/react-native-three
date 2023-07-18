@@ -10,7 +10,9 @@ This is project that render 3D assets(obj) file in react native.
 npm install
 ```
 
-### Run Project
+## Run Project
 ```
 npm run start
 ```
+## Result
+[rotate.mp4](docs%2Frotate.mp4)
