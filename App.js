@@ -11,9 +11,12 @@ import {
   SpotLight,
 } from 'three';
 import { GLView } from 'expo-gl';
+import { useRef } from "react";
 
 export default function App() {
   let timeout;
+  const rotation = useRef({ x: 0, y: 0 });
+  const last = useRef({ x: 0, y: 0 });
   React.useEffect(() => {
     // Clear the animation loop when the component unmounts
     return () => clearTimeout(timeout);
@@ -64,10 +67,12 @@ export default function App() {
             scene.add( object );
             camera.lookAt(object.position)
 
-            //animate rotation
             function update() {
-              object.rotation.y += 0.002
+              object.rotation.x = rotation.current.x;
+              object.rotation.y = rotation.current.y;
+              object.rotation.z = 0;
             }
+
             const render = () => {
               timeout = requestAnimationFrame(render);
               update();
@@ -86,6 +91,23 @@ export default function App() {
             console.log( 'error', error );
           }
         );
+      }}
+      onTouchStart={(event) => {
+        last.current = {
+          x: event.nativeEvent.locationX,
+          y: event.nativeEvent.locationY,
+        };
+      }}
+      onTouchMove={(event) => {
+        const { x, y } = last.current;
+        const dx = event.nativeEvent.locationX - x;
+        const dy = event.nativeEvent.locationY - y;
+        rotation.current.y += dx * 0.01;
+        rotation.current.x += dy * 0.01;
+        last.current = {
+          x: event.nativeEvent.locationX,
+          y: event.nativeEvent.locationY,
+        };
       }}
     />
   );
