@@ -1,7 +1,9 @@
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import * as React from 'react';
+import { useRef } from "react";
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { Asset } from 'expo-asset';
 import { Renderer } from 'expo-three';
-import * as React from 'react';
+import { PanResponder } from 'react-native';
 import {
   AmbientLight,
   Fog,
@@ -11,21 +13,34 @@ import {
   SpotLight,
 } from 'three';
 import { GLView } from 'expo-gl';
-import { useRef } from "react";
 
 export default function App() {
   let timeout;
   const rotation = useRef({ x: 0, y: 0 });
   const last = useRef({ x: 0, y: 0 });
+  const zoom = useRef(1);
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length >= 2) {
+          const { dy } = gestureState;
+          const zoomFactor = 0.005;
+          zoom.current = zoom.current + dy * zoomFactor;
+        }
+      },
+    })
+  ).current;
+
   React.useEffect(() => {
-    // Clear the animation loop when the component unmounts
     return () => clearTimeout(timeout);
   }, []);
-
 
   return (
     <GLView
       style={{ flex: 1 }}
+      {...panResponder.panHandlers}
       onContextCreate={async (gl) => {
         const { drawingBufferWidth: width, drawingBufferHeight: height } = gl;
         const sceneColor = 668096;
@@ -33,9 +48,6 @@ export default function App() {
         const renderer = new Renderer({ gl });
         renderer.setSize(width, height);
         renderer.setClearColor(0x668096);
-
-        const camera = new PerspectiveCamera(100, width / height, 0.01, 1000);
-        camera.position.set(1, 1, 1);
 
         const scene = new Scene();
         scene.fog = new Fog(sceneColor, 1, 10000);
@@ -65,7 +77,6 @@ export default function App() {
           function ( object ) {
             object.scale.set(0.001, 0.001, 0.001)
             scene.add( object );
-            camera.lookAt(object.position)
 
             function update() {
               object.rotation.x = rotation.current.x;
@@ -75,6 +86,9 @@ export default function App() {
 
             const render = () => {
               timeout = requestAnimationFrame(render);
+              const camera = new PerspectiveCamera(100 / zoom.current, width / height, 0.01, 1000);
+              camera.position.set(1, 1, 1 / zoom.current);
+              camera.lookAt(object.position)
               update();
               renderer.render(scene, camera);
               gl.endFrameEXP();
@@ -84,7 +98,7 @@ export default function App() {
 
           // called when loading is in progresses
           function ( xhr ) {
-            console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+            // console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
           },
           // called when loading has errors
           function ( error ) {
@@ -93,21 +107,27 @@ export default function App() {
         );
       }}
       onTouchStart={(event) => {
-        last.current = {
-          x: event.nativeEvent.locationX,
-          y: event.nativeEvent.locationY,
-        };
+        const touches = event.nativeEvent.touches;
+        if (touches.length === 1) {
+          last.current = {
+            x: event.nativeEvent.locationX,
+            y: event.nativeEvent.locationY,
+          };
+        }
       }}
       onTouchMove={(event) => {
-        const { x, y } = last.current;
-        const dx = event.nativeEvent.locationX - x;
-        const dy = event.nativeEvent.locationY - y;
-        rotation.current.y += dx * 0.01;
-        rotation.current.x += dy * 0.01;
-        last.current = {
-          x: event.nativeEvent.locationX,
-          y: event.nativeEvent.locationY,
-        };
+        const touches = event.nativeEvent.touches;
+        if (touches.length === 1) {
+          const {x, y} = last.current;
+          const dx = event.nativeEvent.locationX - x;
+          const dy = event.nativeEvent.locationY - y;
+          rotation.current.y += dx * 0.01;
+          rotation.current.x += dy * 0.01;
+          last.current = {
+            x: event.nativeEvent.locationX,
+            y: event.nativeEvent.locationY,
+          };
+        }
       }}
     />
   );
